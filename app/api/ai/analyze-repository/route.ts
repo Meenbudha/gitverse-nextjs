@@ -4,6 +4,8 @@ import { getGeminiService } from "@/lib/services/geminiService";
 import { repositoryService } from "@/lib/services/repositoryService";
 
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const user = await requireAuth(request);
     const body = await request.json();
@@ -51,6 +53,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ analysis, type });
+
   } catch (error: any) {
     console.error("Repository analysis error:", error);
 
@@ -60,9 +63,19 @@ export async function POST(request: NextRequest) {
         { status: error.status }
       );
     }
+
     return NextResponse.json(
       { error: "Failed to analyze repository" },
       { status: 500 }
     );
+
+  } finally {
+    const duration = Date.now() - startTime;
+
+    console.log({
+      route: "POST /api/ai/analyze-repository",
+      duration_ms: duration,
+      status: "completed"
+    });
   }
 }
