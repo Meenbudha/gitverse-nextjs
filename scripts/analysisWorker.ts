@@ -134,6 +134,7 @@ export async function startAnalysisWorkerLoop(opts?: {
   heartbeatIntervalMs?: number;
   lockMs?: number;
   once?: boolean;
+  timeBudgetMs?: number;
 }) {
   const workerId = opts?.workerId || getWorkerId();
   const pollIntervalMs = opts?.pollIntervalMs ?? POLL_INTERVAL_MS;
@@ -160,15 +161,31 @@ export async function startAnalysisWorkerLoop(opts?: {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
   process.on("SIGINT", () => void shutdown("SIGINT"));
 
+  const startTime = Date.now();
+  let jobsProcessed = 0;
+  let jobsSkipped = 0;
+
   while (!stopping) {
     try {
+      if (opts?.timeBudgetMs) {
+        const elapsed = Date.now() - startTime;
+        if (elapsed >= opts.timeBudgetMs) {
+          console.log(`Time budget of ${opts.timeBudgetMs}ms reached (elapsed: ${elapsed}ms). Processed ${jobsProcessed} jobs. Shutting down gracefully...`);
+          break;
+        }
+      }
+
       const job = await analysisJobService.claimNextJob({
         workerId,
         lockMs,
       });
 
       if (!job) {
-        if (opts?.once) return;
+        jobsSkipped++;
+        if (opts?.once) {
+          console.log(`No jobs available. Processed ${jobsProcessed} jobs.`);
+          return;
+        }
         await sleep(pollIntervalMs);
         continue;
       }
@@ -177,8 +194,12 @@ export async function startAnalysisWorkerLoop(opts?: {
         `claimed job ${job.id} (attempt ${job.attempts}/${job.maxAttempts})`
       );
       await runJob(job, { workerId, lockMs, heartbeatIntervalMs });
+      jobsProcessed++;
 
-      if (opts?.once) return;
+      if (opts?.once) {
+        console.log(`Finished one-shot run. Processed ${jobsProcessed} jobs.`);
+        return;
+      }
     } catch (e) {
       console.error("worker loop error:", sanitizeErrorMessage(e));
       if (opts?.once) return;
