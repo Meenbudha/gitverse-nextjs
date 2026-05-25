@@ -19,13 +19,14 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
-  EmptyState,
 } from "@/components/ui";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import { EmptyState } from "@/components/ui/EmptyState";
+// FIXED: Injecting pre-built skeleton view component to completely block Cumulative Layout Shifts (CLS) #131
+import { RepositoryAnalysisSkeleton } from "@/components/ui/RepositoryAnalysisSkeleton";
 
 interface RepositoryData {
   id: string;
@@ -52,6 +53,11 @@ interface RepositoryOverviewProps {
 export const RepositoryOverview = ({
   repositoryData,
 }: RepositoryOverviewProps) => {
+  // FIXED: Trigger skeleton loader state if repositoryData payload is missing/fetching to preserve bounding box metrics #131
+  if (!repositoryData) {
+    return <RepositoryAnalysisSkeleton />;
+  }
+
   // IMPORTANT: derive README directly from props so it always matches the
   // currently-selected repository (avoids showing stale README when navigating).
   const readmeText: string | null = repositoryData?.readmeText ?? null;
@@ -183,29 +189,19 @@ export const RepositoryOverview = ({
     const base = kind === "image" ? githubRawBase : githubBlobBase;
     if (!base) return v;
 
-    // Handle absolute-from-repo-root paths like "/assets/logo.png".
     const pathPart = v.startsWith("/") ? v.slice(1) : v;
     return `${base}${pathPart}`;
   };
 
   const readmeSanitizeSchema = (() => {
-    // Refined schema for sanitizing README markdown
-    // Allows common README HTML (like alignment/size attributes for images, collapsible details, etc.)
-    // while preventing XSS, protocol-based exploits, and DOM clobbering.
     const schema: any = {
       ...(defaultSchema as any),
-      
-      // Note: "img" is already in defaultSchema.tagNames, so we don't need to add it manually.
-
-      // Explicitly restrict protocols for attributes to mitigate protocol-based XSS (e.g., javascript:)
       protocols: {
         ...((defaultSchema as any).protocols || {}),
-        href: ["http", "https", "mailto"], // Only allow safe URI schemes for links
+        href: ["http", "https", "mailto"],
       },
-
       attributes: {
         ...((defaultSchema as any).attributes || {}),
-        // Allow target and rel attributes for links (essential for external links)
         a: Array.from(
           new Set([
             ...(((defaultSchema as any).attributes?.a as any[]) || []),
@@ -213,14 +209,11 @@ export const RepositoryOverview = ({
             "rel",
           ]),
         ),
-        // Allow standard image attributes used in READMEs (alignment, sizing, and lazy loading)
         img: ["src", "alt", "title", "width", "height", "align", "loading"],
       },
     };
-
     return schema;
   })();
-
 
   const formatTimeAgo = (timestamp: string) => {
     const date = new Date(timestamp);
