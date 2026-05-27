@@ -5,19 +5,20 @@ import { analysisJobService } from "@/lib/services/analysisJobService";
 
 import { shouldThrottleJobKick } from "@/lib/utils/analysisRunner";
 
+
 function kickLocalRunner(request: NextRequest, jobId: string) {
   if (process.env.NODE_ENV === "production") return;
 
  if (shouldThrottleJobKick(jobId)) return;  
   const origin = new URL(request.url).origin;
   const secret = process.env.ANALYSIS_RUNNER_SECRET;
+
   void fetch(`${origin}/api/internal/run-analysis`, {
     method: "POST",
     headers: secret ? { "x-analysis-runner-secret": secret } : undefined,
-  }).catch(() => {
-    // Best-effort only.
-  });
+  }).catch(() => {});
 }
+
 
 export async function GET(
   request: NextRequest,
@@ -57,10 +58,6 @@ export async function GET(
         error: job.error,
         updatedAt: job.updatedAt,
         createdAt: job.createdAt,
-      },
-    }, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, private",
       },
     });
   } catch (error: any) {
