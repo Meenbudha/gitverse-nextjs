@@ -50,6 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (new TextEncoder().encode(password).length > 72) {
+      return NextResponse.json(
+        { error: "Password must be at most 72 characters" },
+        { status: 400 }
+      );
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const txResult = await prisma.$transaction(async (tx) => {
       const existingUser = await tx.user.findUnique({

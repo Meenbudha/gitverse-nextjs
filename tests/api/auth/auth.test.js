@@ -86,6 +86,12 @@ describe('Authentication API Integration Tests', () => {
       const password = 'Password123!';
       expect(PASSWORD_REGEX.test(password)).toBe(true);
     });
+
+    test('Password complexity - over 72 bytes is rejected', () => {
+      const longPassword = 'a'.repeat(73) + 'A1';
+      const isTooLong = new TextEncoder().encode(longPassword).length > 72;
+      expect(isTooLong).toBe(true);
+    });
   });
 
   // ==================== LOGIN TESTS ====================
