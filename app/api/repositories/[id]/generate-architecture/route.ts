@@ -9,11 +9,13 @@ export async function POST(
 ) {
     try {
         const user = await requireAuth(request);
-        const id = parseInt(params.id);
 
-        if (isNaN(id)) {
-            return NextResponse.json({ error: "Invalid repository ID" }, { status: 400 });
+        // Strict ID validation: only digits allowed
+        if (!/^\d+$/.test(params.id)) {
+            return NextResponse.json({ error: "Invalid repository ID format" }, { status: 400 });
         }
+
+        const id = parseInt(params.id);
 
         const repository = await repositoryService.getRepository(id, user.userId);
         if (!repository) {
@@ -35,13 +37,16 @@ export async function POST(
             context: {
                 fileTree: contextFiles.map((f: any) => f.path).join("\n"),
                 commits: (repository.commits || []).slice(0, 50),
-                languages: repository.languages || [],
-                contributors: repository.contributors || []
+                languages: (repository.languages || []).slice(0, 20),
+                contributors: (repository.contributors || []).slice(0, 20)
             }
         });
 
-        // Remove any markdown block tics wrapping the AI response if they exist
-        aiResponse = aiResponse.replace(/^```markdown\n/i, "").replace(/\n```$/i, "");
+        // Remove any markdown code fences (```markdown, ```md, or ```) from the start/end
+        aiResponse = aiResponse
+            .replace(/^[\s\n]*```(?:markdown|md)?[\s\n]*/i, "")
+            .replace(/[\s\n]*```[\s\n]*$/i, "")
+            .trim();
 
         return new NextResponse(aiResponse, {
             status: 200,

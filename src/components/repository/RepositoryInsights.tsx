@@ -103,7 +103,12 @@ export function RepositoryInsights({
       const link = document.createElement("a");
 
       link.href = url;
-      link.download = `${repository.name || 'repository'}-ARCHITECTURE.md`;
+      const sanitizedName = (repository.name || "")
+        .trim()
+        .replace(/[\/\\?%*:|"<>]/g, "-")
+        .replace(/-{2,}/g, "-")
+        .replace(/^-|-$/g, "") || "repository";
+      link.download = `${sanitizedName}-ARCHITECTURE.md`;
       document.body.appendChild(link);
       link.click();
 
@@ -147,7 +152,7 @@ export function RepositoryInsights({
 
           <button
             onClick={generateArchitectureMarkdown}
-            disabled={isGeneratingMd}
+            disabled={isGeneratingMd || !repository?.id}
             className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition disabled:opacity-50 flex items-center gap-2"
           >
             {isGeneratingMd ? "Generating..." : "Export ARCHITECTURE.md"}
