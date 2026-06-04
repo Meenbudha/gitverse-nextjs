@@ -38,6 +38,7 @@ import { QuickStartChecklist } from "@/components/repository/QuickStartChecklist
 import { FolderImportanceGuide } from "@/components/repository/FolderImportanceGuide";
 import { SavedModulesPanel } from "@/components/repository/SavedModulesPanel";
 import { ModuleComparisonTool } from "@/components/repository/ModuleComparisonTool";
+import { RepositoryInsightsDashboard } from "@/components/repository/RepositoryInsightsDashboard";
 import { useModuleBookmarks } from "@/hooks/useModuleBookmarks";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -188,7 +189,7 @@ export const RepositoryOverview = ({
   const readmePath: string | null = repositoryData?.readmePath ?? null;
 
   // Initialize module bookmarks hook
-  const { bookmarkedModules, toggleBookmark, removeBookmark } = useModuleBookmarks();
+  const { bookmarkedModules, removeBookmark } = useModuleBookmarks();
 
   // Calculate total lines of code from languages only
   const totalLines =
@@ -631,6 +632,8 @@ export const RepositoryOverview = ({
           bookmarkedModules={bookmarkedModules}
           onRemoveBookmark={removeBookmark}
         />
+
+        <RepositoryInsightsDashboard repositoryData={repositoryData} />
 
         <ModuleComparisonTool />
 
